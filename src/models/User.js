@@ -1,0 +1,83 @@
+/**
+ * User Model
+ * Defines the user collection structure in MongoDB
+ */
+
+import mongoose from 'mongoose';
+
+const userSchema = new mongoose.Schema(
+  {
+    // Store the user's name
+    name: {
+      type: String,
+      required: [true, 'Please provide a name'],
+      trim: true,
+      minlength: [2, 'Name must be at least 2 characters'],
+    },
+    // Email must be unique so each user has a different email
+    email: {
+      type: String,
+      required: [true, 'Please provide an email'],
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [
+        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+        'Please provide a valid email',
+      ],
+    },
+    // Password will always be hashed before saving (see the service layer)
+    password: {
+      type: String,
+      required: [true, 'Please provide a password'],
+      minlength: [6, 'Password must be at least 6 characters'],
+      select: false, // Don't return password by default when querying
+    },
+    // Store refresh token so we can validate it later when user asks for a new access token
+    refreshToken: {
+      type: String,
+      select: false, // Don't return this field by default (it's sensitive)
+    },
+    // Track when user last logged in - useful for security and analytics
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
+    // We count failed logins so repeated attacks can lock the account temporarily.
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    // When the account is locked we store the unlock time instead of blocking forever.
+    lockUntil: {
+      type: Date,
+      default: null,
+    },
+    // Store the hashed reset token so we can verify password reset requests safely
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    // Keep the reset window short so an old link cannot be reused later
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
+  },
+  {
+    timestamps: true, // Automatically adds createdAt and updatedAt
+  }
+);
+
+// Create an index on email for faster lookups when checking if user already exists
+userSchema.index({ email: 1 });
+// Index on refreshToken so we can quickly find a user by their token
+userSchema.index({ refreshToken: 1 });
+// Index the reset token because password reset requests need a fast exact lookup
+userSchema.index({ resetPasswordToken: 1 });
+// Lock checks happen during login, so an index helps when we need to find locked accounts quickly.
+userSchema.index({ lockUntil: 1 });
+
+const User = mongoose.model('User', userSchema);
+
+export default User;
