@@ -38,6 +38,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       select: false, // Don't return this field by default (it's sensitive)
     },
+    // Role-based access control (default: normal user)
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+    },
     // Track when user last logged in - useful for security and analytics
     lastLogin: {
       type: Date,

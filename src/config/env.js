@@ -64,10 +64,15 @@ export const config = {
     pass: process.env.SMTP_PASS,
     senderEmail: process.env.SENDER_EMAIL,
   },
+
+  // Admin
+  admin: {
+    email: process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : '',
+  },
   
   // API
   apiVersion: process.env.API_VERSION || 'v1',
-  corsOrigins: (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  corsOrigins: (process.env.CORS_ORIGIN || undefined)
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),

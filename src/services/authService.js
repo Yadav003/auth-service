@@ -5,6 +5,7 @@
  */
 
 import User from '../models/User.js';
+import { config } from '../config/env.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyAccessToken, verifyRefreshToken } from '../utils/jwt.js';
 import { generateResetToken, hashToken } from '../utils/token.js';
@@ -117,9 +118,19 @@ export const loginUser = async ({ email, password }) => {
   user.failedLoginAttempts = 0;
   user.lockUntil = null;
 
+  const adminEmail = config.admin.email;
+  const isAdminEmail = adminEmail && user.email.toLowerCase() === adminEmail;
+
+  // Keep admin role in sync with configured admin email.
+  if (isAdminEmail && user.role !== 'admin') {
+    user.role = 'admin';
+  } else if (!isAdminEmail && user.role === 'admin') {
+    user.role = 'user';
+  }
+
   // Generate a short-lived access token (15 minutes)
   // This is what the user will send with each request to prove they're logged in
-  const accessToken = generateAccessToken(user._id, 'user');
+  const accessToken = generateAccessToken(user._id, user.role || 'user');
 
   // Generate a long-lived refresh token (7 days)
   // This is stored in the database and used to get a new access token when it expires
@@ -182,7 +193,7 @@ export const refreshTokens = async ({ refreshToken }) => {
 
   // Token is valid! Now generate new tokens (Refresh Token Rotation)
   // Generate a new access token - short lived (15 minutes)
-  const newAccessToken = generateAccessToken(user._id, 'user');
+  const newAccessToken = generateAccessToken(user._id, user.role || 'user');
 
   // Generate a new refresh token - long lived (7 days)
   // This is the rotation part - we're replacing the old token with a new one

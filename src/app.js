@@ -11,6 +11,7 @@ import { apiLimiter } from './middlewares/rateLimit.middleware.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import { requestLogger } from './middlewares/requestLogger.js';
 import authRoutes from './routes/auth.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.get('/health', (req, res) => {
  */
 app.use('/api/auth', authRoutes);
 app.use(`/api/${config.apiVersion}/auth`, authRoutes);
+app.use(`/api/${config.apiVersion}/admin`, adminRoutes);
 
 /**
  * 404 Handler
