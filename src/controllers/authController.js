@@ -333,6 +333,23 @@ export const googleAuthCallback = async (req, res, next) => {
     res.clearCookie('oauth_nonce', clearCookieOptions);
     res.clearCookie('oauth_verifier', clearCookieOptions);
 
+    if (config.frontendUrl) {
+      const baseUrl = config.frontendUrl.replace(/\/+$/, '');
+      const userPayload = Buffer.from(JSON.stringify(result.user), 'utf8')
+        .toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/g, '');
+
+      const fragment = new URLSearchParams({
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        user: userPayload,
+      });
+
+      return res.redirect(`${baseUrl}/oauth/callback#${fragment.toString()}`);
+    }
+
     return res.status(200).json({
       status: 'success',
       message: 'Google login successful',

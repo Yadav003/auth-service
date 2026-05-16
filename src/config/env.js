@@ -86,4 +86,7 @@ export const config = {
   
   // Logging
   logLevel: process.env.LOG_LEVEL || 'info',
+
+  // Frontend
+  frontendUrl: process.env.FRONTEND_URL,
 };
