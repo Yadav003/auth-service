@@ -29,9 +29,28 @@ const userSchema = new mongoose.Schema(
     // Password will always be hashed before saving (see the service layer)
     password: {
       type: String,
-      required: [true, 'Please provide a password'],
+      required: function () {
+        return (this.authProvider || 'local') === 'local';
+      },
       minlength: [6, 'Password must be at least 6 characters'],
       select: false, // Don't return password by default when querying
+    },
+    // Track the primary auth provider so we can support OAuth accounts
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
+    // Store Google subject ID for account linking
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    // Keep a copy of email verification status when provided by OAuth
+    emailVerified: {
+      type: Boolean,
+      default: false,
     },
     // Store refresh token so we can validate it later when user asks for a new access token
     refreshToken: {
@@ -79,6 +98,8 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ email: 1 });
 // Index on refreshToken so we can quickly find a user by their token
 userSchema.index({ refreshToken: 1 });
+// Index Google ID for faster account lookups
+userSchema.index({ googleId: 1 });
 // Index the reset token because password reset requests need a fast exact lookup
 userSchema.index({ resetPasswordToken: 1 });
 // Lock checks happen during login, so an index helps when we need to find locked accounts quickly.

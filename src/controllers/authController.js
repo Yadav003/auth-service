@@ -15,12 +15,16 @@ import {
 import {
   registerUser,
   loginUser,
+  startGoogleOAuth,
+  handleGoogleCallback,
   refreshTokens,
   requestPasswordReset,
   resetPassword,
   logoutUser,
   validateAccessToken,
 } from '../services/authService.js';
+import { config } from '../config/env.js';
+import { parseCookies } from '../utils/oauth.js';
 
 /**
  * Register endpoint - POST /api/v1/auth/register
@@ -249,4 +253,108 @@ export const validateToken = async (req, res, next) => {
   }
 };
 
-export default { register, login, refreshToken, forgotPassword, resetUserPassword, logout, validateToken };
+/**
+ * Google OAuth start endpoint - GET/POST /api/v1/auth/google
+ * Redirects to Google with PKCE and sets short-lived HttpOnly cookies
+ */
+export const googleAuthStart = async (req, res, next) => {
+  try {
+    const { url, state, nonce, codeVerifier } = startGoogleOAuth();
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'lax',
+      maxAge: 10 * 60 * 1000,
+      path: '/api',
+    };
+
+    res.cookie('oauth_state', state, cookieOptions);
+    res.cookie('oauth_nonce', nonce, cookieOptions);
+    res.cookie('oauth_verifier', codeVerifier, cookieOptions);
+
+    const wantsJson =
+      req.method === 'POST' || (req.headers.accept || '').includes('application/json');
+
+    if (wantsJson) {
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          authorizationUrl: url,
+        },
+      });
+    }
+
+    return res.redirect(url);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Google OAuth callback endpoint - GET /api/v1/auth/google/callback
+ */
+export const googleAuthCallback = async (req, res, next) => {
+  try {
+    const oauthError = typeof req.query.error === 'string' ? req.query.error : null;
+    const oauthErrorDescription =
+      typeof req.query.error_description === 'string' ? req.query.error_description : null;
+
+    if (oauthError) {
+      const error = new Error(oauthErrorDescription || 'Google authorization failed');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const code = typeof req.query.code === 'string' ? req.query.code : '';
+    const state = typeof req.query.state === 'string' ? req.query.state : '';
+
+    const cookies = parseCookies(req.headers.cookie);
+    const storedState = cookies.oauth_state;
+    const storedNonce = cookies.oauth_nonce;
+    const codeVerifier = cookies.oauth_verifier;
+
+    const result = await handleGoogleCallback({
+      code,
+      state,
+      storedState,
+      storedNonce,
+      codeVerifier,
+    });
+
+    const clearCookieOptions = {
+      httpOnly: true,
+      secure: config.nodeEnv === 'production',
+      sameSite: 'lax',
+      path: '/api',
+    };
+
+    res.clearCookie('oauth_state', clearCookieOptions);
+    res.clearCookie('oauth_nonce', clearCookieOptions);
+    res.clearCookie('oauth_verifier', clearCookieOptions);
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Google login successful',
+      data: {
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export default {
+  register,
+  login,
+  refreshToken,
+  forgotPassword,
+  resetUserPassword,
+  logout,
+  validateToken,
+  googleAuthStart,
+  googleAuthCallback,
+};

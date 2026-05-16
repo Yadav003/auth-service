@@ -9,6 +9,28 @@ import { config } from '../config/env.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyAccessToken, verifyRefreshToken } from '../utils/jwt.js';
 import { generateResetToken, hashToken } from '../utils/token.js';
+import {
+  buildGoogleAuthUrl,
+  generateCodeChallenge,
+  generateCodeVerifier,
+  generateNonce,
+  generateState,
+} from '../utils/oauth.js';
+
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GOOGLE_TOKENINFO_URL = 'https://oauth2.googleapis.com/tokeninfo';
+
+const getGoogleConfig = () => {
+  const { clientId, clientSecret, redirectUri } = config.google || {};
+
+  if (!clientId || !clientSecret || !redirectUri) {
+    const error = new Error('Google OAuth is not configured');
+    error.statusCode = 500;
+    throw error;
+  }
+
+  return { clientId, clientSecret, redirectUri };
+};
 
 /**
  * Register a new user
@@ -70,6 +92,12 @@ export const loginUser = async ({ email, password }) => {
   if (!user) {
     const error = new Error('Invalid email or password');
     error.statusCode = 401; // Unauthorized
+    throw error;
+  }
+
+  if (!user.password) {
+    const error = new Error('This account uses Google login');
+    error.statusCode = 400;
     throw error;
   }
 
@@ -148,6 +176,186 @@ export const loginUser = async ({ email, password }) => {
   delete userResponse.refreshToken; // Never return refresh token in response
 
   // Return both tokens and user info
+  return {
+    user: userResponse,
+    accessToken,
+    refreshToken,
+  };
+};
+
+/**
+ * Start the Google OAuth flow with PKCE
+ * Returns the authorization URL plus state/nonce/code verifier for secure handling
+ */
+export const startGoogleOAuth = () => {
+  const { clientId, redirectUri } = getGoogleConfig();
+
+  const state = generateState();
+  const nonce = generateNonce();
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = generateCodeChallenge(codeVerifier);
+
+  const url = buildGoogleAuthUrl({
+    clientId,
+    redirectUri,
+    state,
+    nonce,
+    codeChallenge,
+  });
+
+  return { url, state, nonce, codeVerifier };
+};
+
+/**
+ * Handle Google OAuth callback and issue local JWTs
+ */
+export const handleGoogleCallback = async ({
+  code,
+  state,
+  storedState,
+  codeVerifier,
+  storedNonce,
+}) => {
+  if (!code) {
+    const error = new Error('Missing authorization code');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!state || !storedState || state !== storedState) {
+    const error = new Error('Invalid OAuth state');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (!codeVerifier) {
+    const error = new Error('Missing PKCE verifier');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const { clientId, clientSecret, redirectUri } = getGoogleConfig();
+
+  const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: 'authorization_code',
+      code_verifier: codeVerifier,
+    }),
+  });
+
+  const tokenData = await tokenResponse.json();
+
+  if (!tokenResponse.ok) {
+    const error = new Error(tokenData.error_description || 'Google token exchange failed');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (!tokenData.id_token) {
+    const error = new Error('Google did not return an ID token');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const tokenInfoResponse = await fetch(
+    `${GOOGLE_TOKENINFO_URL}?id_token=${encodeURIComponent(tokenData.id_token)}`
+  );
+  const tokenInfo = await tokenInfoResponse.json();
+
+  if (!tokenInfoResponse.ok) {
+    const error = new Error('Unable to verify Google ID token');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const issuerValid =
+    tokenInfo.iss === 'https://accounts.google.com' || tokenInfo.iss === 'accounts.google.com';
+  const audienceValid = tokenInfo.aud === clientId;
+  const nonceValid = !storedNonce || tokenInfo.nonce === storedNonce;
+
+  if (!issuerValid || !audienceValid || !nonceValid) {
+    const error = new Error('Invalid Google ID token');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const emailVerified = tokenInfo.email_verified === true || tokenInfo.email_verified === 'true';
+
+  if (!emailVerified) {
+    const error = new Error('Google account email is not verified');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const email = tokenInfo.email ? tokenInfo.email.toLowerCase() : null;
+
+  if (!email) {
+    const error = new Error('Google account email is missing');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  let user = await User.findOne({ email }).select('+refreshToken');
+
+  if (!user) {
+    const displayName = tokenInfo.name || tokenInfo.given_name || email.split('@')[0];
+
+    user = await User.create({
+      name: displayName,
+      email,
+      authProvider: 'google',
+      googleId: tokenInfo.sub,
+      emailVerified,
+      lastLogin: new Date(),
+    });
+  } else {
+    if (user.googleId && user.googleId !== tokenInfo.sub) {
+      const error = new Error('Google account does not match the linked user');
+      error.statusCode = 409;
+      throw error;
+    }
+
+    if (!user.googleId) {
+      user.googleId = tokenInfo.sub;
+    }
+
+    if (!user.authProvider) {
+      user.authProvider = 'local';
+    }
+
+    user.emailVerified = emailVerified;
+    user.lastLogin = new Date();
+    user.failedLoginAttempts = 0;
+    user.lockUntil = null;
+  }
+
+  const adminEmail = config.admin.email;
+  const isAdminEmail = adminEmail && email === adminEmail;
+
+  if (isAdminEmail && user.role !== 'admin') {
+    user.role = 'admin';
+  } else if (!isAdminEmail && user.role === 'admin') {
+    user.role = 'user';
+  }
+
+  const accessToken = generateAccessToken(user._id, user.role || 'user');
+  const refreshToken = generateRefreshToken(user._id);
+
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  const userResponse = user.toObject();
+  delete userResponse.password;
+  delete userResponse.refreshToken;
+
   return {
     user: userResponse,
     accessToken,
@@ -331,6 +539,8 @@ export const validateAccessToken = async ({ authorizationHeader }) => {
 export default {
   registerUser,
   loginUser,
+  startGoogleOAuth,
+  handleGoogleCallback,
   refreshTokens,
   requestPasswordReset,
   resetPassword,

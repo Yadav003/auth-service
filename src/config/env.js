@@ -65,6 +65,13 @@ export const config = {
     senderEmail: process.env.SENDER_EMAIL,
   },
 
+  // Google OAuth
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    redirectUri: process.env.GOOGLE_REDIRECT_URI,
+  },
+
   // Admin
   admin: {
     email: process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : '',

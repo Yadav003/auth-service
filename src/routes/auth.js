@@ -13,6 +13,8 @@ import {
   resetUserPassword,
   logout,
   validateToken,
+  googleAuthStart,
+  googleAuthCallback,
 } from '../controllers/authController.js';
 import { loginLimiter, forgotPasswordLimiter } from '../middlewares/rateLimit.middleware.js';
 
@@ -33,6 +35,19 @@ router.post('/register', register);
  * Response includes: user info, accessToken, refreshToken
  */
 router.post('/login', loginLimiter, login);
+
+/**
+ * GET/POST /api/v1/auth/google
+ * Start Google OAuth with PKCE
+ */
+router.get('/google', googleAuthStart);
+router.post('/google', googleAuthStart);
+
+/**
+ * GET /api/v1/auth/google/callback
+ * Handle Google OAuth callback
+ */
+router.get('/google/callback', googleAuthCallback);
 
 /**
  * POST /api/v1/auth/refresh-token
@@ -76,6 +91,8 @@ router.get('/status', (req, res) => {
       register: 'POST /api/v1/auth/register',
       login: 'POST /api/v1/auth/login',
       refreshToken: 'POST /api/v1/auth/refresh-token',
+      googleStart: 'GET /api/v1/auth/google',
+      googleCallback: 'GET /api/v1/auth/google/callback',
       forgotPassword: 'POST /api/auth/forgot-password',
       resetPassword: 'POST /api/auth/reset-password',
       logout: 'POST /api/auth/logout',
