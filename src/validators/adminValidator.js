@@ -7,23 +7,27 @@ import Joi from 'joi';
 
 const listUsersSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(20),
+  limit: Joi.number().integer().min(1).max(100).default(10),
   search: Joi.string().trim().max(100).allow(''),
   role: Joi.string().valid('user', 'admin').allow(''),
+  loginProvider: Joi.string().valid('local', 'google', 'normal').allow(''),
+  status: Joi.string().valid('active', 'disabled').allow(''),
 });
 
 const createUserSchema = Joi.object({
-  name: Joi.string().min(2).required(),
+  name: Joi.string().min(3).max(30).required(),
   email: Joi.string().email().required(),
-  password: Joi.string().min(6).required(),
-  role: Joi.string().valid('user', 'admin').default('user'),
+  password: Joi.string().min(8).required(),
+  role: Joi.string().valid('user', 'admin').required(),
+  status: Joi.string().valid('active', 'disabled').default('active'),
 });
 
 const updateUserSchema = Joi.object({
-  name: Joi.string().min(2),
+  name: Joi.string().min(3).max(30),
   email: Joi.string().email(),
-  password: Joi.string().min(6),
+  password: Joi.string().min(8),
   role: Joi.string().valid('user', 'admin'),
+  status: Joi.string().valid('active', 'disabled'),
   lockUntil: Joi.date().allow(null),
 }).min(1);
 

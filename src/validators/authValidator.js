@@ -19,20 +19,22 @@ const registerSchema = Joi.object({
       'string.email': 'Please provide a valid email address',
       'any.required': 'Email is required',
     }),
-  // Password needs at least 6 characters for basic security
+  // Password needs at least 8 characters for basic security
   password: Joi.string()
-    .min(6)
+    .min(8)
     .required()
     .messages({
-      'string.min': 'Password must be at least 6 characters long',
+      'string.min': 'Password must be at least 8 characters long',
       'any.required': 'Password is required',
     }),
-  // Name is required and should be at least 2 characters
+  // Name is required and should be 3-30 characters
   name: Joi.string()
-    .min(2)
+    .min(3)
+    .max(30)
     .required()
     .messages({
-      'string.min': 'Name must be at least 2 characters',
+      'string.min': 'Name must be at least 3 characters',
+      'string.max': 'Name must be at most 30 characters',
       'any.required': 'Name is required',
     }),
 });
@@ -139,10 +141,10 @@ const resetPasswordSchema = Joi.object({
       'any.required': 'Reset token is required',
     }),
   newPassword: Joi.string()
-    .min(6)
+    .min(8)
     .required()
     .messages({
-      'string.min': 'Password must be at least 6 characters long',
+      'string.min': 'Password must be at least 8 characters long',
       'any.required': 'New password is required',
     }),
 });

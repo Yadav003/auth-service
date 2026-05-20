@@ -3,6 +3,7 @@
  * Business logic for admin-only operations (user management, dashboard stats)
  */
 
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import { hashPassword } from '../utils/password.js';
 
@@ -17,9 +18,16 @@ const sanitizeUser = (user) => {
   return userObject;
 };
 
-export const listUsers = async ({ page = 1, limit = 20, search = '', role = '' }) => {
+export const listUsers = async ({
+  page = 1,
+  limit = 10,
+  search = '',
+  role = '',
+  loginProvider = '',
+  status = '',
+}) => {
   const safePage = Math.max(1, Number(page) || 1);
-  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 10));
   const trimmedSearch = String(search || '').trim().slice(0, 100);
 
   const query = {};
@@ -28,12 +36,35 @@ export const listUsers = async ({ page = 1, limit = 20, search = '', role = '' }
     query.role = role;
   }
 
+  if (loginProvider) {
+    const normalizedLoginProvider = loginProvider === 'normal' ? 'local' : loginProvider;
+    query.authProvider = normalizedLoginProvider;
+  }
+
+  if (status) {
+    query.status = status;
+  }
+
   if (trimmedSearch) {
     const safeSearch = escapeRegex(trimmedSearch);
-    query.$or = [
+    const normalizedSearch = trimmedSearch.toLowerCase() === 'normal' ? 'local' : null;
+    const orFilters = [
       { name: { $regex: safeSearch, $options: 'i' } },
       { email: { $regex: safeSearch, $options: 'i' } },
+      { role: { $regex: safeSearch, $options: 'i' } },
+      { authProvider: { $regex: safeSearch, $options: 'i' } },
+      { status: { $regex: safeSearch, $options: 'i' } },
     ];
+
+    if (normalizedSearch) {
+      orFilters.push({ authProvider: normalizedSearch });
+    }
+
+    if (mongoose.Types.ObjectId.isValid(trimmedSearch)) {
+      orFilters.push({ _id: trimmedSearch });
+    }
+
+    query.$or = orFilters;
   }
 
   const [users, total] = await Promise.all([
@@ -67,7 +98,13 @@ export const getUserById = async (userId) => {
   return sanitizeUser(user);
 };
 
-export const createUser = async ({ name, email, password, role = 'user' }) => {
+export const createUser = async ({
+  name,
+  email,
+  password,
+  role,
+  status = 'active',
+}) => {
   const existingUser = await User.findOne({ email });
 
   if (existingUser) {
@@ -83,6 +120,7 @@ export const createUser = async ({ name, email, password, role = 'user' }) => {
     email,
     password: hashedPassword,
     role,
+    status,
   });
 
   return sanitizeUser(user);
@@ -107,6 +145,10 @@ export const updateUser = async (userId, updates) => {
 
   if (updates.role !== undefined) {
     user.role = updates.role;
+  }
+
+  if (updates.status !== undefined) {
+    user.status = updates.status;
   }
 
   if (updates.password !== undefined) {

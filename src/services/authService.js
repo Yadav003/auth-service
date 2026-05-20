@@ -95,6 +95,18 @@ export const loginUser = async ({ email, password }) => {
     throw error;
   }
 
+  if (user.status === 'disabled') {
+    const error = new Error('Account is disabled');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if ((user.authProvider || 'local') === 'google') {
+    const error = new Error('This account uses Google login');
+    error.statusCode = 400;
+    throw error;
+  }
+
   if (!user.password) {
     const error = new Error('This account uses Google login');
     error.statusCode = 400;
@@ -317,6 +329,12 @@ export const handleGoogleCallback = async ({
       lastLogin: new Date(),
     });
   } else {
+    if (user.status === 'disabled') {
+      const error = new Error('Account is disabled');
+      error.statusCode = 403;
+      throw error;
+    }
+
     if (user.googleId && user.googleId !== tokenInfo.sub) {
       const error = new Error('Google account does not match the linked user');
       error.statusCode = 409;
@@ -520,9 +538,15 @@ export const validateAccessToken = async ({ authorizationHeader }) => {
 
   const decoded = verifyAccessToken(token);
 
-  const user = await User.findById(decoded.userId).select('_id');
+  const user = await User.findById(decoded.userId).select('status');
 
   if (!user) {
+    const error = new Error('Unauthorized');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (user.status === 'disabled') {
     const error = new Error('Unauthorized');
     error.statusCode = 401;
     throw error;

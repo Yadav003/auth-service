@@ -12,7 +12,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a name'],
       trim: true,
-      minlength: [2, 'Name must be at least 2 characters'],
+      minlength: [3, 'Name must be at least 3 characters'],
+      maxlength: [30, 'Name must be at most 30 characters'],
     },
     // Email must be unique so each user has a different email
     email: {
@@ -32,7 +33,7 @@ const userSchema = new mongoose.Schema(
       required: function () {
         return (this.authProvider || 'local') === 'local';
       },
-      minlength: [6, 'Password must be at least 6 characters'],
+      minlength: [8, 'Password must be at least 8 characters'],
       select: false, // Don't return password by default when querying
     },
     // Track the primary auth provider so we can support OAuth accounts
@@ -62,6 +63,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
+    },
+    // Basic account status for admin enable/disable
+    status: {
+      type: String,
+      enum: ['active', 'disabled'],
+      default: 'active',
     },
     // Track when user last logged in - useful for security and analytics
     lastLogin: {
