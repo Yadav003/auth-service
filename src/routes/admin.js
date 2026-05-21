@@ -15,6 +15,10 @@ import {
   deleteUserHandler,
   adminLogout,
 } from '../controllers/adminController.js';
+import {
+  getAdminAdvertisement,
+  updateAdvertisement,
+} from '../controllers/advertisementController.js';
 
 const router = express.Router();
 
@@ -27,5 +31,7 @@ router.post('/users', createUserHandler);
 router.patch('/users/:userId', updateUserHandler);
 router.delete('/users/:userId', deleteUserHandler);
 router.post('/logout', adminLogout);
+router.get('/advertisement', getAdminAdvertisement);
+router.patch('/advertisement', updateAdvertisement);
 
 export default router;
