@@ -5,15 +5,18 @@
 
 import {
   listUsers,
+  listContacts,
   getUserById,
   createUser,
   updateUser,
   deleteUser,
+  deleteContact,
   getDashboardStats,
 } from '../services/adminService.js';
 import { logoutUser } from '../services/authService.js';
 import {
   validateListUsers,
+  validateListContacts,
   validateCreateUser,
   validateUpdateUser,
 } from '../validators/adminValidator.js';
@@ -51,6 +54,44 @@ export const getUsers = async (req, res, next) => {
       status: 'success',
       message: 'Users fetched successfully',
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getContacts = async (req, res, next) => {
+  try {
+    const { error, value } = validateListContacts(req.query);
+
+    if (error) {
+      const errorMessages = error.details.map((detail) => detail.message);
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed',
+        errors: errorMessages,
+      });
+    }
+
+    const result = await listContacts(value);
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Contacts fetched successfully',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteContactHandler = async (req, res, next) => {
+  try {
+    const result = await deleteContact(req.params.contactId);
+
+    res.status(200).json({
+      status: 'success',
+      message: result.message,
     });
   } catch (error) {
     next(error);
@@ -159,9 +200,11 @@ export const adminLogout = async (req, res, next) => {
 export default {
   getDashboard,
   getUsers,
+  getContacts,
   getUser,
   createUserHandler,
   updateUserHandler,
   deleteUserHandler,
+  deleteContactHandler,
   adminLogout,
 };

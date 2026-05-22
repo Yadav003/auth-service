@@ -5,6 +5,7 @@
 
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Contact from '../models/Contact.js';
 import { hashPassword } from '../utils/password.js';
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -16,6 +17,19 @@ const sanitizeUser = (user) => {
   delete userObject.resetPasswordToken;
   delete userObject.resetPasswordExpires;
   return userObject;
+};
+
+const sanitizeContact = (contact) => {
+  return {
+    id: contact._id?.toString(),
+    name: contact.name,
+    email: contact.email,
+    subject: contact.subject,
+    message: contact.message,
+    phone: contact.phone,
+    createdAt: contact.createdAt,
+    updatedAt: contact.updatedAt,
+  };
 };
 
 export const listUsers = async ({
@@ -77,6 +91,49 @@ export const listUsers = async ({
 
   return {
     users: users.map(sanitizeUser),
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      pages: Math.ceil(total / safeLimit),
+    },
+  };
+};
+
+export const listContacts = async ({ page = 1, limit = 10, search = '' }) => {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 10));
+  const trimmedSearch = String(search || '').trim().slice(0, 100);
+
+  const query = {};
+
+  if (trimmedSearch) {
+    const safeSearch = escapeRegex(trimmedSearch);
+    const orFilters = [
+      { name: { $regex: safeSearch, $options: 'i' } },
+      { email: { $regex: safeSearch, $options: 'i' } },
+      { subject: { $regex: safeSearch, $options: 'i' } },
+      { message: { $regex: safeSearch, $options: 'i' } },
+      { phone: { $regex: safeSearch, $options: 'i' } },
+    ];
+
+    if (mongoose.Types.ObjectId.isValid(trimmedSearch)) {
+      orFilters.push({ _id: trimmedSearch });
+    }
+
+    query.$or = orFilters;
+  }
+
+  const [contacts, total] = await Promise.all([
+    Contact.find(query)
+      .sort({ createdAt: -1 })
+      .skip((safePage - 1) * safeLimit)
+      .limit(safeLimit),
+    Contact.countDocuments(query),
+  ]);
+
+  return {
+    contacts: contacts.map(sanitizeContact),
     pagination: {
       page: safePage,
       limit: safeLimit,
@@ -178,6 +235,20 @@ export const deleteUser = async (userId) => {
   return { message: 'User deleted successfully' };
 };
 
+export const deleteContact = async (contactId) => {
+  const contact = await Contact.findById(contactId);
+
+  if (!contact) {
+    const error = new Error('Contact not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  await contact.deleteOne();
+
+  return { message: 'Contact deleted successfully' };
+};
+
 export const getDashboardStats = async () => {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -209,9 +280,11 @@ export const getDashboardStats = async () => {
 
 export default {
   listUsers,
+  listContacts,
   getUserById,
   createUser,
   updateUser,
   deleteUser,
+  deleteContact,
   getDashboardStats,
 };

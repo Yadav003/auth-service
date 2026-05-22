@@ -14,6 +14,12 @@ const listUsersSchema = Joi.object({
   status: Joi.string().valid('active', 'disabled').allow(''),
 });
 
+const listContactsSchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(10),
+  search: Joi.string().trim().max(100).allow(''),
+});
+
 const createUserSchema = Joi.object({
   name: Joi.string().min(3).max(30).required(),
   email: Joi.string().email().required(),
@@ -38,6 +44,13 @@ export const validateListUsers = (data) => {
   });
 };
 
+export const validateListContacts = (data) => {
+  return listContactsSchema.validate(data, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+};
+
 export const validateCreateUser = (data) => {
   return createUserSchema.validate(data, {
     abortEarly: false,
@@ -54,6 +67,7 @@ export const validateUpdateUser = (data) => {
 
 export default {
   validateListUsers,
+  validateListContacts,
   validateCreateUser,
   validateUpdateUser,
 };
