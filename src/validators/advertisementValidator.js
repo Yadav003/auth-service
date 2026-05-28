@@ -8,16 +8,16 @@ import Joi from 'joi';
 const advertisementCreateSchema = Joi.object({
   title: Joi.string().trim().min(2).max(120).required(),
   websiteUrl: Joi.string().trim().uri({ scheme: ['http', 'https'] }).required(),
-  imageUrl: Joi.string().trim().uri({ scheme: ['http', 'https'] }).required(),
+  imageUrl: Joi.forbidden(),
   show: Joi.boolean(),
 });
 
 const advertisementUpdateSchema = Joi.object({
   title: Joi.string().trim().min(2).max(120),
   websiteUrl: Joi.string().trim().uri({ scheme: ['http', 'https'] }),
-  imageUrl: Joi.string().trim().uri({ scheme: ['http', 'https'] }),
+  imageUrl: Joi.forbidden(),
   show: Joi.boolean(),
-}).min(1);
+});
 
 export const validateAdvertisementCreate = (data) => {
   return advertisementCreateSchema.validate(data, {

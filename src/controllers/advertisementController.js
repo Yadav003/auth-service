@@ -16,6 +16,7 @@ import {
   validateAdvertisementCreate,
   validateAdvertisementUpdate,
 } from '../validators/advertisementValidator.js';
+import { uploadAdvertisementImage } from '../utils/cloudinary.js';
 
 const toAdminPayload = (advertisement) => {
   if (!advertisement) {
@@ -108,6 +109,21 @@ export const updateAdvertisement = async (req, res, next) => {
       });
     }
 
+    const hasBodyUpdates = Object.keys(value).length > 0;
+    const hasImage = Boolean(req.file);
+
+    if (!hasBodyUpdates && !hasImage) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed',
+        errors: ['Provide at least one field or an image file'],
+      });
+    }
+
+    if (hasImage) {
+      value.imageUrl = await uploadAdvertisementImage(req.file);
+    }
+
     const advertisement = await upsertAdvertisement(value);
 
     res.status(200).json({
@@ -149,6 +165,16 @@ export const createAdvertisement = async (req, res, next) => {
       });
     }
 
+    if (!req.file) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed',
+        errors: ['Image file is required'],
+      });
+    }
+
+    value.imageUrl = await uploadAdvertisementImage(req.file);
+
     const advertisement = await createAdvertisementEntry(value);
 
     res.status(201).json({
@@ -172,6 +198,21 @@ export const updateAdvertisementById = async (req, res, next) => {
         message: 'Validation failed',
         errors: errorMessages,
       });
+    }
+
+    const hasBodyUpdates = Object.keys(value).length > 0;
+    const hasImage = Boolean(req.file);
+
+    if (!hasBodyUpdates && !hasImage) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed',
+        errors: ['Provide at least one field or an image file'],
+      });
+    }
+
+    if (hasImage) {
+      value.imageUrl = await uploadAdvertisementImage(req.file);
     }
 
     const advertisement = await updateAdvertisementEntry(

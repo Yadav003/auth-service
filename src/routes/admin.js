@@ -25,6 +25,7 @@ import {
   updateAdvertisementById,
   deleteAdvertisement,
 } from '../controllers/advertisementController.js';
+import { uploadAdvertisementImage } from '../middlewares/uploadImage.middleware.js';
 
 const router = express.Router();
 
@@ -40,10 +41,14 @@ router.patch('/users/:userId', updateUserHandler);
 router.delete('/users/:userId', deleteUserHandler);
 router.post('/logout', adminLogout);
 router.get('/advertisement', getAdminAdvertisement);
-router.patch('/advertisement', updateAdvertisement);
+router.patch('/advertisement', uploadAdvertisementImage, updateAdvertisement);
 router.get('/advertisements', getAdminAdvertisements);
-router.post('/advertisements', createAdvertisement);
-router.patch('/advertisements/:advertisementId', updateAdvertisementById);
+router.post('/advertisements', uploadAdvertisementImage, createAdvertisement);
+router.patch(
+  '/advertisements/:advertisementId',
+  uploadAdvertisementImage,
+  updateAdvertisementById
+);
 router.delete('/advertisements/:advertisementId', deleteAdvertisement);
 
 export default router;
