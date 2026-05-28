@@ -1,6 +1,6 @@
 /**
  * Advertisement Model
- * Stores a single, admin-managed promo banner configuration
+ * Stores admin-managed promo banner configurations
  */
 
 import mongoose from 'mongoose';
@@ -9,9 +9,9 @@ const advertisementSchema = new mongoose.Schema(
   {
     singletonKey: {
       type: String,
-      default: 'global',
+      trim: true,
       unique: true,
-      immutable: true,
+      index: true,
     },
     title: {
       type: String,

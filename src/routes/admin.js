@@ -20,6 +20,10 @@ import {
 import {
   getAdminAdvertisement,
   updateAdvertisement,
+  getAdminAdvertisements,
+  createAdvertisement,
+  updateAdvertisementById,
+  deleteAdvertisement,
 } from '../controllers/advertisementController.js';
 
 const router = express.Router();
@@ -37,5 +41,9 @@ router.delete('/users/:userId', deleteUserHandler);
 router.post('/logout', adminLogout);
 router.get('/advertisement', getAdminAdvertisement);
 router.patch('/advertisement', updateAdvertisement);
+router.get('/advertisements', getAdminAdvertisements);
+router.post('/advertisements', createAdvertisement);
+router.patch('/advertisements/:advertisementId', updateAdvertisementById);
+router.delete('/advertisements/:advertisementId', deleteAdvertisement);
 
 export default router;
