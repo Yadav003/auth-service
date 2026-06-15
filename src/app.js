@@ -14,6 +14,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import advertisementRoutes from './routes/advertisement.js';
 import contactRoutes from './routes/contact.js';
+import spinRoutes from './routes/spin.js';
 
 const app = express();
 
@@ -65,13 +66,15 @@ app.use(`/api/${config.apiVersion}/admin`, adminRoutes);
 app.use(`/api/${config.apiVersion}/advertisement`, advertisementRoutes);
 app.use('/api/contact', contactRoutes);
 app.use(`/api/${config.apiVersion}/contact`, contactRoutes);
+app.use('/api/spin', spinRoutes);
+app.use(`/api/${config.apiVersion}/spin`, spinRoutes);
 
 /**
  * 404 Handler
  */
 app.use((req, res) => {
   res.status(404).json({
-    status: 'error',
+    success: false,
     message: 'Route not found',
     path: req.originalUrl,
   });

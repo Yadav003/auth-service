@@ -10,8 +10,7 @@ export const errorMiddleware = (err, req, res, next) => {
 
   // Stack traces are useful while building, but they should stay out of production responses.
   const errorResponse = {
-    status: 'error',
-    statusCode,
+    success: false,
     message,
   };
 

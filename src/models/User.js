@@ -85,6 +85,17 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Accumulated points earned from Daily Spin & Win.
+    totalRewardPoints: {
+      type: Number,
+      default: 0,
+      min: [0, 'Reward points cannot be negative'],
+    },
+    // The last successful spin timestamp. Eligibility is calculated server-side.
+    lastSpinDate: {
+      type: Date,
+      default: null,
+    },
     // Store the hashed reset token so we can verify password reset requests safely
     resetPasswordToken: {
       type: String,
@@ -111,6 +122,8 @@ userSchema.index({ googleId: 1 });
 userSchema.index({ resetPasswordToken: 1 });
 // Lock checks happen during login, so an index helps when we need to find locked accounts quickly.
 userSchema.index({ lockUntil: 1 });
+// Spin status checks and atomic daily spin updates query this field often.
+userSchema.index({ lastSpinDate: 1 });
 
 const User = mongoose.model('User', userSchema);
 
