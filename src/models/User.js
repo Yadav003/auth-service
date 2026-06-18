@@ -15,6 +15,33 @@ const userSchema = new mongoose.Schema(
       minlength: [3, 'Name must be at least 3 characters'],
       maxlength: [30, 'Name must be at most 30 characters'],
     },
+    // Public display name used by profile APIs.
+    username: {
+      type: String,
+      trim: true,
+      minlength: [3, 'Username must be at least 3 characters'],
+      maxlength: [50, 'Username must be at most 50 characters'],
+    },
+    // URL for the user's profile image. Upload support can be added later.
+    profileImage: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    // Optional mobile number for contact and profile display.
+    mobileNumber: {
+      type: String,
+      trim: true,
+      maxlength: [15, 'Mobile number must be at most 15 characters'],
+      default: '',
+    },
+    // Optional address field for user profile.
+    address: {
+      type: String,
+      trim: true,
+      maxlength: [255, 'Address must be at most 255 characters'],
+      default: '',
+    },
     // Email must be unique so each user has a different email
     email: {
       type: String,
@@ -124,6 +151,14 @@ userSchema.index({ resetPasswordToken: 1 });
 userSchema.index({ lockUntil: 1 });
 // Spin status checks and atomic daily spin updates query this field often.
 userSchema.index({ lastSpinDate: 1 });
+
+userSchema.pre('validate', function () {
+  if (!this.username && this.name) {
+    this.username = this.name;
+  }
+
+  // next();
+});
 
 const User = mongoose.model('User', userSchema);
 

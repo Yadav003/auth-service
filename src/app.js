@@ -15,6 +15,7 @@ import adminRoutes from './routes/admin.js';
 import advertisementRoutes from './routes/advertisement.js';
 import contactRoutes from './routes/contact.js';
 import spinRoutes from './routes/spin.js';
+import profileRoutes from './routes/profile.js';
 
 const app = express();
 
@@ -68,6 +69,8 @@ app.use('/api/contact', contactRoutes);
 app.use(`/api/${config.apiVersion}/contact`, contactRoutes);
 app.use('/api/spin', spinRoutes);
 app.use(`/api/${config.apiVersion}/spin`, spinRoutes);
+app.use('/api/profile', profileRoutes);
+app.use(`/api/${config.apiVersion}/profile`, profileRoutes);
 
 /**
  * 404 Handler
