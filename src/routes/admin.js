@@ -18,6 +18,10 @@ import {
   adminLogout,
 } from '../controllers/adminController.js';
 import {
+  getAdminRewardRedemptions,
+  updateAdminRewardRedemption,
+} from '../controllers/reward.controller.js';
+import {
   getAdminAdvertisement,
   updateAdvertisement,
   getAdminAdvertisements,
@@ -50,5 +54,7 @@ router.patch(
   updateAdvertisementById
 );
 router.delete('/advertisements/:advertisementId', deleteAdvertisement);
+router.get('/rewards/redemptions', getAdminRewardRedemptions);
+router.patch('/rewards/redemptions/:id', updateAdminRewardRedemption);
 
 export default router;

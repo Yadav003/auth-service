@@ -16,6 +16,7 @@ import advertisementRoutes from './routes/advertisement.js';
 import contactRoutes from './routes/contact.js';
 import spinRoutes from './routes/spin.js';
 import profileRoutes from './routes/profile.js';
+import rewardRoutes from './routes/reward.routes.js';
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.get('/health', (req, res) => {
  * API Routes
  */
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use(`/api/${config.apiVersion}/auth`, authRoutes);
 app.use(`/api/${config.apiVersion}/admin`, adminRoutes);
 app.use(`/api/${config.apiVersion}/advertisement`, advertisementRoutes);
@@ -71,6 +73,8 @@ app.use('/api/spin', spinRoutes);
 app.use(`/api/${config.apiVersion}/spin`, spinRoutes);
 app.use('/api/profile', profileRoutes);
 app.use(`/api/${config.apiVersion}/profile`, profileRoutes);
+app.use('/api/rewards', rewardRoutes);
+app.use(`/api/${config.apiVersion}/rewards`, rewardRoutes);
 
 /**
  * 404 Handler
